@@ -28,50 +28,53 @@ export async function POST(req) {
     // ── PUSH ──────────────────────────────────────
     if (event === 'Push Hook') {
       const branch = body.ref?.replace('refs/heads/', '') || 'unknown';
-      const commits = body.commits?.length || 0;
       const userName = body.user_name || 'Someone';
       const projectName = body.project?.name || 'Unknown Project';
+      const projectUrl = body.project?.web_url || '#';
+      const compareUrl = body.compare?.url || projectUrl;
+      const commits = body.commits?.length || 0;
+
       message =
-        `📤 <b>New Push</b>\n` +
-        `👤 ${userName}\n` +
-        `🌿 Branch: <code>${branch}</code>\n` +
-        `📦 ${commits} commit(s)\n` +
-        `📁 ${projectName}`;
+        `<b>${userName}</b> pushed to branch ` +
+        `<a href="${projectUrl}/tree/${branch}">${branch}</a> ` +
+        `of ${projectName}\n` +
+        `📦 ${commits} commit(s) — ` +
+        `<a href="${compareUrl}">Compare changes</a>`;
     }
 
     // ── MERGE REQUEST ─────────────────────────────
     else if (event === 'Merge Request Hook') {
       const mr = body.object_attributes || {};
       const action = mr.action || 'updated';
-      const emoji =
-        action === 'merged' ? '✅' :
-        action === 'opened' ? '🔀' :
-        action === 'closed' ? '❌' : '📝';
       const userName = body.user?.name || 'Someone';
       const projectName = body.project?.name || 'Unknown Project';
+
       message =
-        `${emoji} <b>Merge Request ${upper(action)}</b>\n` +
-        `👤 ${userName}\n` +
-        `📌 <a href="${mr.url || '#'}">!${mr.iid || '?'} ${mr.title || 'No title'}</a>\n` +
-        `🌿 ${mr.source_branch || '?'} → ${mr.target_branch || '?'}\n` +
-        `📁 ${projectName}`;
+        `<b>${userName}</b> ${action} merge request ` +
+        `<a href="${mr.url || '#'}">!${mr.iid || '?'} ${mr.title || ''}</a> ` +
+        `in ${projectName}\n` +
+        `🌿 ${mr.source_branch || '?'} → ${mr.target_branch || '?'}`;
     }
 
     // ── PIPELINE ──────────────────────────────────
     else if (event === 'Pipeline Hook') {
       const pipe = body.object_attributes || {};
       const status = pipe.status || 'unknown';
-      const emoji =
-        status === 'success' ? '✅' :
-        status === 'failed'  ? '❌' : '🔄';
       const userName = body.user?.name || 'Someone';
-      const projectName = body.project?.name || 'Unknown Project';
+      const projectName = body.project?.name || 'Unknown';
+      const projectUrl = body.project?.web_url || '#';
+      const pipeId = pipe.id || '?';
+      const branch = pipe.ref || 'unknown';
+      const duration = pipe.duration
+        ? `${Math.floor(pipe.duration / 60).toString().padStart(2,'0')}:${(pipe.duration % 60).toString().padStart(2,'0')}`
+        : '00:00';
+      const passed = status === 'success' ? 'has passed' : status === 'failed' ? 'has failed' : status;
+
       message =
-        `${emoji} <b>Pipeline ${upper(status)}</b>\n` +
-        `👤 ${userName}\n` +
-        `🌿 Branch: <code>${pipe.ref || 'unknown'}</code>\n` +
-        `⏱ Duration: ${pipe.duration || 0}s\n` +
-        `📁 ${projectName}`;
+        `<a href="${projectUrl}">${projectName}</a>: ` +
+        `Pipeline <a href="${projectUrl}/-/pipelines/${pipeId}">#${pipeId}</a> ` +
+        `of branch <b>${branch}</b> ` +
+        `by ${userName} ${passed} in ${duration}`;
     }
 
     // ── TAG ───────────────────────────────────────
@@ -79,11 +82,12 @@ export async function POST(req) {
       const tag = body.ref?.replace('refs/tags/', '') || 'unknown';
       const userName = body.user_name || 'Someone';
       const projectName = body.project?.name || 'Unknown Project';
+      const projectUrl = body.project?.web_url || '#';
+
       message =
-        `🏷️ <b>New Tag Created</b>\n` +
-        `👤 ${userName}\n` +
-        `🔖 Tag: <code>${tag}</code>\n` +
-        `📁 ${projectName}`;
+        `<b>${userName}</b> created tag ` +
+        `<a href="${projectUrl}/-/tags/${tag}">${tag}</a> ` +
+        `in ${projectName}`;
     }
 
     if (message) await sendTelegram(message);
