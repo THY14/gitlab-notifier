@@ -21,54 +21,63 @@ export async function POST(req) {
 
   // ── PUSH ──────────────────────────────────────
   if (event === 'Push Hook') {
-    const branch = body.ref.replace('refs/heads/', '');
+    const branch = body.ref?.replace('refs/heads/', '') || 'unknown';
     const commits = body.commits?.length || 0;
+    const userName = body.user_name || 'Someone';
+    const projectName = body.project?.name || 'Unknown Project';
     message =
       `📤 <b>New Push</b>\n` +
-      `👤 ${body.user_name}\n` +
+      `👤 ${userName}\n` +
       `🌿 Branch: <code>${branch}</code>\n` +
       `📦 ${commits} commit(s)\n` +
-      `📁 ${body.project.name}`;
+      `📁 ${projectName}`;
   }
 
   // ── MERGE REQUEST ─────────────────────────────
   else if (event === 'Merge Request Hook') {
-    const mr = body.object_attributes;
-    const action = mr.action;
+    const mr = body.object_attributes || {};
+    const action = mr.action || 'updated';
     const emoji =
       action === 'merged' ? '✅' :
       action === 'opened' ? '🔀' :
       action === 'closed' ? '❌' : '📝';
+    const userName = body.user?.name || 'Someone';
+    const projectName = body.project?.name || 'Unknown Project';
     message =
       `${emoji} <b>Merge Request ${action.toUpperCase()}</b>\n` +
-      `👤 ${body.user.name}\n` +
-      `📌 <a href="${mr.url}">!${mr.iid} ${mr.title}</a>\n` +
-      `🌿 ${mr.source_branch} → ${mr.target_branch}\n` +
-      `📁 ${body.project.name}`;
+      `👤 ${userName}\n` +
+      `📌 <a href="${mr.url || '#'}">!${mr.iid || '?'} ${mr.title || 'No title'}</a>\n` +
+      `🌿 ${mr.source_branch || '?'} → ${mr.target_branch || '?'}\n` +
+      `📁 ${projectName}`;
   }
 
   // ── PIPELINE ──────────────────────────────────
   else if (event === 'Pipeline Hook') {
-    const pipe = body.object_attributes;
+    const pipe = body.object_attributes || {};
+    const status = pipe.status || 'unknown';
     const emoji =
-      pipe.status === 'success' ? '✅' :
-      pipe.status === 'failed'  ? '❌' : '🔄';
+      status === 'success' ? '✅' :
+      status === 'failed'  ? '❌' : '🔄';
+    const userName = body.user?.name || 'Someone';
+    const projectName = body.project?.name || 'Unknown Project';
     message =
-      `${emoji} <b>Pipeline ${pipe.status.toUpperCase()}</b>\n` +
-      `👤 ${body.user.name}\n` +
-      `🌿 Branch: <code>${pipe.ref}</code>\n` +
-      `⏱ Duration: ${pipe.duration}s\n` +
-      `📁 ${body.project.name}`;
+      `${emoji} <b>Pipeline ${status.toUpperCase()}</b>\n` +
+      `👤 ${userName}\n` +
+      `🌿 Branch: <code>${pipe.ref || 'unknown'}</code>\n` +
+      `⏱ Duration: ${pipe.duration || 0}s\n` +
+      `📁 ${projectName}`;
   }
 
   // ── TAG ───────────────────────────────────────
   else if (event === 'Tag Push Hook') {
-    const tag = body.ref.replace('refs/tags/', '');
+    const tag = body.ref?.replace('refs/tags/', '') || 'unknown';
+    const userName = body.user_name || 'Someone';
+    const projectName = body.project?.name || 'Unknown Project';
     message =
       `🏷️ <b>New Tag Created</b>\n` +
-      `👤 ${body.user_name}\n` +
+      `👤 ${userName}\n` +
       `🔖 Tag: <code>${tag}</code>\n` +
-      `📁 ${body.project.name}`;
+      `📁 ${projectName}`;
   }
 
   if (message) await sendTelegram(message);
